@@ -1,0 +1,7 @@
+Method,Timely Critical Coverage,Weighted Timely Coverage,Average Delay,Runtime (s)
+Random burning, 4.74 ± 4.82%, 5.79 ± 2.82%,2.70 ± 0.60,0.0001
+Degree-based burning,10.53 ± 0.00%, 8.27 ± 0.00%,2.64 ± 0.00,0.0010
+Betweenness-based burning,13.16 ± 0.00%, 9.77 ± 0.00%,2.64 ± 0.00,0.0011
+Farthest-first burning, 5.79 ± 3.87%, 6.17 ± 2.01%,3.28 ± 0.19,0.0237
+Criticality-only burning, 5.26 ± 0.00%, 3.76 ± 0.00%,2.00 ± 0.00,0.0013
+Proposed method,13.16 ± 0.00%,11.65 ± 0.00%,2.56 ± 0.00,0.0256

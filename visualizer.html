@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Emergency Alert Graph Burning Visualizer</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    /* Pulse beacon animation for newly ignited sources */
+    @keyframes pulseRing {
+      0% { transform: scale(0.9); opacity: 0.9; }
+      50% { transform: scale(1.45); opacity: 0.3; }
+      100% { transform: scale(0.9); opacity: 0.9; }
+    }
+    .pulse-beacon {
+      animation: pulseRing 1.8s infinite ease-in-out;
+    }
+    canvas {
+      touch-action: none;
+    }
+  </style>
+</head>
+<body class="bg-[var(--background)] text-[var(--foreground)] antialiased p-4 min-h-screen">
+
+  <div class="max-w-6xl mx-auto space-y-4">
+
+    <!-- Top Header & Status Bar -->
+    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-500/10 text-red-500 border border-red-500/20">
+            Emergency Alert Simulation
+          </span>
+          <span id="networkStatusBadge" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+            75 Participants • 6 Dynamic Rounds
+          </span>
+        </div>
+        <h1 class="text-xl font-bold tracking-tight mt-1 text-[var(--foreground)]">
+          Criticality- and Deadline-Aware Graph Burning
+        </h1>
+        <p class="text-xs text-[var(--muted-foreground)]">
+          Visualizing round-by-round source selection, temporal link contact spread, and deadline compliance.
+        </p>
+      </div>
+
+      <!-- Playback Controls -->
+      <div class="flex flex-wrap items-center gap-2 bg-[var(--background)] p-2 rounded-xl border border-[var(--border)]">
+        <button id="btnPrev" class="px-3 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--card)] text-sm font-medium transition-colors" title="Previous Round">
+          ⏮️ Back
+        </button>
+
+        <button id="btnPlayPause" class="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold flex items-center gap-1.5 transition-all shadow-sm">
+          <span id="playIcon">▶</span>
+          <span id="playText">Play</span>
+        </button>
+
+        <button id="btnNext" class="px-3 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--card)] text-sm font-medium transition-colors" title="Next Round">
+          ⏭️ Step
+        </button>
+
+        <button id="btnReset" class="px-3 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--card)] text-sm font-medium transition-colors" title="Reset Simulation">
+          🔄 Reset
+        </button>
+
+        <!-- Speed selector -->
+        <div class="flex items-center ml-2 border-l border-[var(--border)] pl-3 gap-1">
+          <span class="text-xs text-[var(--muted-foreground)] mr-1">Speed:</span>
+          <button data-speed="1800" class="speed-btn px-2 py-0.5 rounded text-xs border border-[var(--border)] hover:bg-[var(--card)]">1x</button>
+          <button data-speed="1100" class="speed-btn px-2 py-0.5 rounded text-xs bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/30">1.5x</button>
+          <button data-speed="650" class="speed-btn px-2 py-0.5 rounded text-xs border border-[var(--border)] hover:bg-[var(--card)]">2x</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timeline & Stepper Bar -->
+    <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 shadow-sm">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">Dissemination Timeline</span>
+        <span id="currentRoundLabel" class="text-sm font-bold text-indigo-400">Round 0 of 6 (Initialization)</span>
+      </div>
+      <div class="grid grid-cols-7 gap-2">
+        <button data-round="0" class="step-nav py-2 px-1 text-center rounded-lg border text-xs font-semibold transition-all border-indigo-500 bg-indigo-500/10 text-indigo-400">
+          Init
+        </button>
+        <button data-round="1" class="step-nav py-2 px-1 text-center rounded-lg border text-xs font-semibold transition-all border-[var(--border)] hover:border-indigo-400">
+          R1 (Nurse 1105)
+        </button>
+        <button data-round="2" class="step-nav py-2 px-1 text-center rounded-lg border text-xs font-semibold transition-all border-[var(--border)] hover:border-indigo-400">
+          R2 (Nurse 1109)
+        </button>
+        <button data-round="3" class="step-nav py-2 px-1 text-center rounded-lg border text-xs font-semibold transition-all border-[var(--border)] hover:border-indigo-400">
+          R3 (Admin 1098)
+        </button>
+        <button data-round="4" class="step-nav py-2 px-1 text-center rounded-lg border text-xs font-semibold transition-all border-[var(--border)] hover:border-indigo-400">
+          R4 (Patient 1365)
+        </button>
+        <button data-round="5" class="step-nav py-2 px-1 text-center rounded-lg border text-xs font-semibold transition-all border-[var(--border)] hover:border-indigo-400">
+          R5 (Admin 1209)
+        </button>
+        <button data-round="6" class="step-nav py-2 px-1 text-center rounded-lg border text-xs font-semibold transition-all border-[var(--border)] hover:border-indigo-400">
+          R6 (Propagation)
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Workspace: Canvas + Live Telemetry -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+      <!-- Interactive Canvas Graph Area (Span 2) -->
+      <div class="lg:col-span-2 bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm relative flex flex-col">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-3">
+            <span class="text-sm font-semibold">Hospital Ward Dynamic Network</span>
+            <span id="activeEdgesCount" class="text-xs px-2 py-0.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--muted-foreground)]">
+              0 active links
+            </span>
+          </div>
+
+          <!-- Color Legend -->
+          <div class="flex flex-wrap items-center gap-3 text-xs">
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-red-500 shadow-sm shadow-red-500/50"></span> Selected Source</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> On Time (≤ Deadline)</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-500"></span> Critical (Doctor/Nurse)</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-slate-400"></span> Ordinary / Unreached</span>
+          </div>
+        </div>
+
+        <!-- Canvas Container -->
+        <div class="relative w-full h-[540px] bg-[var(--background)] border border-[var(--border)] rounded-xl overflow-hidden cursor-crosshair">
+          <canvas id="networkCanvas" class="w-full h-full block"></canvas>
+
+          <!-- Hover Tooltip -->
+          <div id="nodeTooltip" class="absolute pointer-events-none hidden bg-gray-900/95 text-white border border-gray-700 rounded-lg p-2.5 text-xs shadow-xl backdrop-blur-sm z-30 transition-all duration-75">
+            <div id="tipTitle" class="font-bold text-sm text-indigo-300">Node #1105</div>
+            <div id="tipRole" class="text-gray-300">Role: Nurse (Crit 4)</div>
+            <div id="tipDeadline" class="text-gray-300">Delivery Deadline: 3 rounds</div>
+            <div id="tipStatus" class="font-medium mt-1 text-emerald-400">Status: Source (Round 1)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Metrics, Selected Source Card & Event Ticker -->
+      <div class="space-y-4">
+
+        <!-- Live Scorecards -->
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm space-y-4">
+          <h2 class="text-sm font-bold tracking-tight text-[var(--foreground)] uppercase text-xs text-[var(--muted-foreground)]">
+            Live Dissemination Telemetry
+          </h2>
+
+          <!-- Metric 1: Timely Critical Coverage -->
+          <div>
+            <div class="flex justify-between text-xs mb-1 font-medium">
+              <span>Timely Critical Coverage:</span>
+              <span id="metricCritCov" class="font-bold text-emerald-500">0.0%</span>
+            </div>
+            <div class="w-full bg-[var(--background)] rounded-full h-2.5 overflow-hidden border border-[var(--border)]">
+              <div id="barCritCov" class="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+            <p class="text-[11px] text-[var(--muted-foreground)] mt-0.5">Critical recipients (Doctors & Nurses) reached before deadline.</p>
+          </div>
+
+          <!-- Metric 2: Weighted Timely Coverage -->
+          <div>
+            <div class="flex justify-between text-xs mb-1 font-medium">
+              <span>Weighted Timely Coverage:</span>
+              <span id="metricWeightedCov" class="font-bold text-indigo-400">0.0%</span>
+            </div>
+            <div class="w-full bg-[var(--background)] rounded-full h-2.5 overflow-hidden border border-[var(--border)]">
+              <div id="barWeightedCov" class="bg-indigo-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <!-- Quick Stats 2x2 Grid -->
+          <div class="grid grid-cols-2 gap-2 pt-2 border-t border-[var(--border)]">
+            <div class="bg-[var(--background)] p-2.5 rounded-xl border border-[var(--border)]">
+              <div class="text-[11px] text-[var(--muted-foreground)]">Total Informed</div>
+              <div id="statTotalInformed" class="text-base font-bold text-[var(--foreground)]">0 / 75</div>
+            </div>
+            <div class="bg-[var(--background)] p-2.5 rounded-xl border border-[var(--border)]">
+              <div class="text-[11px] text-[var(--muted-foreground)]">Newly Reached</div>
+              <div id="statNewlyReached" class="text-base font-bold text-indigo-400">0</div>
+            </div>
+            <div class="bg-[var(--background)] p-2.5 rounded-xl border border-[var(--border)]">
+              <div class="text-[11px] text-[var(--muted-foreground)]">Avg Delay</div>
+              <div id="statAvgDelay" class="text-base font-bold text-[var(--foreground)]">0.00 r</div>
+            </div>
+            <div class="bg-[var(--background)] p-2.5 rounded-xl border border-[var(--border)]">
+              <div class="text-[11px] text-[var(--muted-foreground)]">Overlap Ratio</div>
+              <div id="statOverlap" class="text-base font-bold text-[var(--foreground)]">0.0%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active Round Source Card -->
+        <div id="sourceCard" class="bg-[var(--card)] border border-red-500/30 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+          <div class="absolute -right-2 -bottom-2 text-6xl text-red-500/10 font-black select-none pointer-events-none">🔥</div>
+          <div class="text-[11px] font-semibold uppercase tracking-wider text-red-500 mb-1">Source Activated This Round</div>
+          <div id="sourceCardTitle" class="text-base font-bold text-[var(--foreground)]">No source active (Init)</div>
+          <div id="sourceCardDetails" class="text-xs text-[var(--muted-foreground)] mt-1">
+            Press Play or Step to ignite the first optimal source.
+          </div>
+        </div>
+
+        <!-- Event Log Ticker -->
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm flex flex-col h-44">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-[var(--muted-foreground)] uppercase">Step-by-Step Dispatch Log</span>
+            <span class="text-[11px] text-[var(--muted-foreground)]">Auto-Scroll</span>
+          </div>
+          <div id="eventLogContainer" class="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
+            <div class="p-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-gray-400">
+              [00:00] Simulation initialized with 75 participants across Lyon hospital ward.
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Embedded Simulation Data & Script -->
+  <script>
+    // Embedded real simulation data from the hospital contact study
+    const SIM_DATA = {
+      nodes: [
+        {"id": "1157", "role": "MED", "criticality": 5, "deadline": 2, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.478, "y": 0.558},
+        {"id": "1232", "role": "ADM", "criticality": 2, "deadline": 5, "arrival_round": 4, "is_source": false, "source_round": null, "x": 0.113, "y": -0.492},
+        {"id": "1191", "role": "MED", "criticality": 5, "deadline": 2, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.479, "y": 0.391},
+        {"id": "1159", "role": "MED", "criticality": 5, "deadline": 2, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.816, "y": 0.616},
+        {"id": "1144", "role": "MED", "criticality": 5, "deadline": 2, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.299, "y": 0.885},
+        {"id": "1152", "role": "MED", "criticality": 5, "deadline": 2, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.621, "y": 0.862},
+        {"id": "1105", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": 1, "is_source": true, "source_round": 1, "x": 0.033, "y": -0.637},
+        {"id": "1295", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": 1, "is_source": false, "source_round": null, "x": 0.040, "y": -0.539},
+        {"id": "1109", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": 2, "is_source": true, "source_round": 2, "x": 0.219, "y": -0.548},
+        {"id": "1114", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": 4, "is_source": false, "source_round": null, "x": -0.050, "y": -0.449},
+        {"id": "1115", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": 2, "is_source": false, "source_round": null, "x": 0.416, "y": -0.814},
+        {"id": "1098", "role": "ADM", "criticality": 2, "deadline": 5, "arrival_round": 3, "is_source": true, "source_round": 3, "x": -0.200, "y": -0.470},
+        {"id": "1181", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": 3, "is_source": false, "source_round": null, "x": -0.107, "y": -0.355},
+        {"id": "1164", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": 4, "is_source": false, "source_round": null, "x": -0.040, "y": -0.581},
+        {"id": "1116", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": 4, "is_source": false, "source_round": null, "x": 0.092, "y": -0.666},
+        {"id": "1193", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": 4, "is_source": false, "source_round": null, "x": 0.038, "y": -0.443},
+        {"id": "1142", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": 6, "is_source": false, "source_round": null, "x": 0.048, "y": -0.195},
+        {"id": "1149", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": 5, "is_source": false, "source_round": null, "x": 0.221, "y": -0.228},
+        {"id": "1179", "role": "ADM", "criticality": 2, "deadline": 5, "arrival_round": 5, "is_source": false, "source_round": null, "x": 0.002, "y": -0.790},
+        {"id": "1168", "role": "MED", "criticality": 5, "deadline": 2, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.803, "y": -0.347},
+        {"id": "1196", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.927, "y": 0.156},
+        {"id": "1365", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": 4, "is_source": true, "source_round": 4, "x": -0.735, "y": 0.740},
+        {"id": "1320", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.550, "y": 0.753},
+        {"id": "1363", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.046, "y": 0.831},
+        {"id": "1374", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.303, "y": -0.838},
+        {"id": "1393", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.938, "y": 0.394},
+        {"id": "1190", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.707, "y": 0.772},
+        {"id": "1261", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.082, "y": 0.995},
+        {"id": "1378", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.841, "y": -0.468},
+        {"id": "1305", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.954, "y": -0.131},
+        {"id": "1352", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.467, "y": -0.728},
+        {"id": "1377", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.904, "y": -0.241},
+        {"id": "1130", "role": "MED", "criticality": 5, "deadline": 2, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.693, "y": 0.573},
+        {"id": "1148", "role": "MED", "criticality": 5, "deadline": 2, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.465, "y": 0.872},
+        {"id": "1383", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.358, "y": 0.984},
+        {"id": "1327", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.608, "y": -0.702},
+        {"id": "1323", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.931, "y": 0.406},
+        {"id": "1391", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.469, "y": 0.833},
+        {"id": "1399", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.529, "y": -0.802},
+        {"id": "1395", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.048, "y": -0.903},
+        {"id": "1238", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.842, "y": 0.473},
+        {"id": "1246", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.090, "y": -0.925},
+        {"id": "1332", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.731, "y": -0.466},
+        {"id": "1207", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.717, "y": 0.599},
+        {"id": "1373", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.953, "y": 0.067},
+        {"id": "1210", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.845, "y": 0.485},
+        {"id": "1245", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.874, "y": 0.307},
+        {"id": "1100", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.915, "y": -0.040},
+        {"id": "1108", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.816, "y": 0.087},
+        {"id": "1260", "role": "MED", "criticality": 5, "deadline": 2, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.774, "y": -0.624},
+        {"id": "1209", "role": "ADM", "criticality": 2, "deadline": 5, "arrival_round": 5, "is_source": true, "source_round": 5, "x": -0.944, "y": 0.273},
+        {"id": "1307", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.767, "y": 0.281},
+        {"id": "1221", "role": "MED", "criticality": 5, "deadline": 2, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.818, "y": -0.513},
+        {"id": "1205", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.283, "y": 0.861},
+        {"id": "1202", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.560, "y": -0.770},
+        {"id": "1362", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.645, "y": -0.650},
+        {"id": "1385", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.810, "y": 0.623},
+        {"id": "1658", "role": "ADM", "criticality": 2, "deadline": 5, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.216, "y": 0.961},
+        {"id": "1702", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.710, "y": -0.623},
+        {"id": "1660", "role": "MED", "criticality": 5, "deadline": 2, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.945, "y": 0.196},
+        {"id": "1769", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.405, "y": 0.933},
+        {"id": "1701", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.229, "y": -0.885},
+        {"id": "1401", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.899, "y": -0.038},
+        {"id": "1625", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.582, "y": 0.829},
+        {"id": "1416", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.975, "y": 0.049},
+        {"id": "1613", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.169, "y": -0.847},
+        {"id": "1485", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.907, "y": -0.239},
+        {"id": "1460", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.966, "y": -0.145},
+        {"id": "1535", "role": "ADM", "criticality": 2, "deadline": 5, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.032, "y": 0.919},
+        {"id": "1525", "role": "ADM", "criticality": 2, "deadline": 5, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.167, "y": 1.000},
+        {"id": "1469", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.912, "y": -0.376},
+        {"id": "1547", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.671, "y": -0.496},
+        {"id": "1784", "role": "PAT", "criticality": 3, "deadline": 4, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.392, "y": -0.866},
+        {"id": "1629", "role": "NUR", "criticality": 4, "deadline": 3, "arrival_round": null, "is_source": false, "source_round": null, "x": 0.570, "y": 0.657},
+        {"id": "1671", "role": "ADM", "criticality": 2, "deadline": 5, "arrival_round": null, "is_source": false, "source_round": null, "x": -0.897, "y": -0.351}
+      ],
+      rounds: [
+        {"round": 1, "source": "1105", "sourceRole": "Nurse (Crit 4)", "edges": [["1105", "1295"]], "desc": "Ignited Nurse 1105. Transmitted alert over active contact to Nurse 1295."},
+        {"round": 2, "source": "1109", "sourceRole": "Nurse (Crit 4)", "edges": [["1109", "1115"]], "desc": "Ignited Nurse 1109. Spread over active temporal edge to Nurse 1115."},
+        {"round": 3, "source": "1098", "sourceRole": "Admin (Crit 2)", "edges": [["1105", "1295"], ["1105", "1109"], ["1295", "1109"], ["1109", "1115"], ["1098", "1181"]], "desc": "Ignited Admin 1098. Reached Nurse 1181; interconnected ward cluster synchronizes."},
+        {"round": 4, "source": "1365", "sourceRole": "Patient (Crit 3)", "edges": [["1232", "1295"], ["1232", "1109"], ["1232", "1193"], ["1105", "1295"], ["1105", "1164"], ["1295", "1164"], ["1295", "1116"], ["1295", "1114"], ["1295", "1193"], ["1295", "1109"], ["1109", "1164"], ["1109", "1193"], ["1114", "1098"], ["1098", "1164"], ["1164", "1116"], ["1164", "1193"], ["1116", "1193"], ["1142", "1149"]], "desc": "Ignited Patient 1365 to cover isolated patient wing. In ward center, alert spreads to 5 newly informed nodes!"},
+        {"round": 5, "source": "1209", "sourceRole": "Admin (Crit 2)", "edges": [["1157", "1191"], ["1232", "1105"], ["1232", "1179"], ["1232", "1193"], ["1232", "1181"], ["1232", "1164"], ["1232", "1295"], ["1232", "1149"], ["1105", "1179"], ["1105", "1164"], ["1105", "1295"], ["1105", "1109"], ["1105", "1193"], ["1105", "1116"], ["1295", "1164"], ["1295", "1181"], ["1295", "1109"], ["1295", "1193"], ["1109", "1193"], ["1109", "1149"], ["1114", "1116"], ["1114", "1098"], ["1098", "1193"], ["1116", "1193"]], "desc": "Ignited Admin 1209. Reached Admin 1179 and Nurse 1149."},
+        {"round": 6, "source": null, "sourceRole": "None", "edges": [["1157", "1191"], ["1232", "1149"], ["1105", "1109"], ["1105", "1114"], ["1295", "1193"], ["1114", "1098"], ["1114", "1142"], ["1114", "1193"], ["1193", "1142"], ["1142", "1149"]], "desc": "Final propagation round. Source budget K=5 reached. Remaining informed spreaders alert Nurse 1142."}
+      ]
+    };
+
+    // State Variables
+    let currentRound = 0;
+    let isPlaying = false;
+    let playTimer = null;
+    let playSpeedMs = 1100;
+    let hoveredNode = null;
+
+    // Node coordinate mapping
+    const nodeMap = new Map();
+    SIM_DATA.nodes.forEach(n => nodeMap.set(n.id, n));
+
+    // Canvas Setup
+    const canvas = document.getElementById("networkCanvas");
+    const ctx = canvas.getContext("2d");
+    let cw = 0, ch = 0;
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      cw = rect.width;
+      ch = rect.height;
+      canvas.width = cw * window.devicePixelRatio;
+      canvas.height = ch * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      draw();
+    }
+    window.addEventListener("resize", resizeCanvas);
+
+    // Coordinate conversion (-1..1 space to canvas space)
+    function toCanvasCoords(nx, ny) {
+      const pad = 42;
+      const x = ((nx + 1) / 2) * (cw - pad * 2) + pad;
+      const y = ((-ny + 1) / 2) * (ch - pad * 2) + pad;
+      return { x, y };
+    }
+
+    // Determine node visual state at round r
+    function getNodeState(node, r) {
+      if (r === 0) {
+        return { isInformed: false, isSource: false, onTime: false };
+      }
+      const isSourceSoFar = node.is_source && node.source_round !== null && node.source_round <= r;
+      const isInformed = node.arrival_round !== null && node.arrival_round <= r;
+      const onTime = isInformed && node.arrival_round <= node.deadline;
+      const isCurrentSource = node.is_source && node.source_round === r;
+
+      return { isInformed, isSource: isSourceSoFar, isCurrentSource, onTime, arr: node.arrival_round };
+    }
+
+    // Render Canvas Loop
+    function draw() {
+      if (!cw || !ch) return;
+      ctx.clearRect(0, 0, cw, ch);
+
+      // 1. Draw Inactive / Background Connections (faint)
+      ctx.lineWidth = 0.8;
+      ctx.strokeStyle = "rgba(120, 144, 156, 0.15)";
+      for (let i = 0; i < SIM_DATA.rounds.length; i++) {
+        const roundEdges = SIM_DATA.rounds[i].edges;
+        for (const [uId, vId] of roundEdges) {
+          const u = nodeMap.get(uId);
+          const v = nodeMap.get(vId);
+          if (!u || !v) continue;
+          const p1 = toCanvasCoords(u.x, u.y);
+          const p2 = toCanvasCoords(v.x, v.y);
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+        }
+      }
+
+      // 2. Draw Active Edges for the Current Round (Highlighted Glowing Cyan)
+      if (currentRound > 0 && currentRound <= SIM_DATA.rounds.length) {
+        const activeEdges = SIM_DATA.rounds[currentRound - 1].edges;
+        ctx.lineWidth = 2.4;
+        ctx.strokeStyle = "#38bdf8"; // bright cyan
+        ctx.shadowColor = "#38bdf8";
+        ctx.shadowBlur = 8;
+
+        for (const [uId, vId] of activeEdges) {
+          const u = nodeMap.get(uId);
+          const v = nodeMap.get(vId);
+          if (!u || !v) continue;
+          const p1 = toCanvasCoords(u.x, u.y);
+          const p2 = toCanvasCoords(v.x, v.y);
+
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+        }
+        ctx.shadowBlur = 0; // reset shadow
+      }
+
+      // 3. Draw Nodes
+      SIM_DATA.nodes.forEach(node => {
+        const pt = toCanvasCoords(node.x, node.y);
+        const state = getNodeState(node, currentRound);
+        let radius = 7.5;
+        let fillColor = "#94a3b8"; // default slate
+        let strokeColor = "#334155";
+        let strokeWidth = 1.2;
+
+        if (state.isCurrentSource) {
+          // Newly ignited source this round: Red with pulsing ring
+          fillColor = "#ef4444";
+          strokeColor = "#ffffff";
+          radius = 11;
+          strokeWidth = 2.5;
+
+          // Draw Beacon Wave
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, radius + 8, 0, Math.PI * 2);
+          ctx.strokeStyle = "rgba(239, 68, 68, 0.4)";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        } else if (state.isSource) {
+          fillColor = "#dc2626"; // Source from prior round
+          radius = 9.5;
+          strokeColor = "#fee2e2";
+        } else if (state.onTime) {
+          fillColor = "#10b981"; // Green: reached on time
+          radius = 8.5;
+        } else if (node.criticality >= 4) {
+          fillColor = "#f59e0b"; // Orange: critical doctor/nurse
+          radius = 8;
+        }
+
+        if (hoveredNode && hoveredNode.id === node.id) {
+          radius += 3.5;
+          strokeColor = "#6366f1";
+          strokeWidth = 3;
+        }
+
+        // Draw Circle
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = fillColor;
+        ctx.fill();
+        ctx.lineWidth = strokeWidth;
+        ctx.strokeStyle = strokeColor;
+        ctx.stroke();
+
+        // Label on larger or critical nodes
+        if (state.isSource || state.isCurrentSource || node.criticality >= 4 || (hoveredNode && hoveredNode.id === node.id)) {
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "bold 9px sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          const shortRole = node.role === "MED" ? "Dr" : node.role === "NUR" ? "Nr" : node.role;
+          ctx.fillText(state.isSource ? "S" : shortRole, pt.x, pt.y);
+        }
+      });
+    }
+
+    // Update Telemetry, Dashboard, and Event Log
+    function updateDashboard() {
+      // Round labels
+      const rText = currentRound === 0 ? "Round 0 of 6 (Initialization)" : `Round ${currentRound} of 6 (Dissemination)`;
+      document.getElementById("currentRoundLabel").innerText = rText;
+
+      // Active Edges
+      const edgeCount = (currentRound > 0 && currentRound <= SIM_DATA.rounds.length)
+        ? SIM_DATA.rounds[currentRound - 1].edges.length : 0;
+      document.getElementById("activeEdgesCount").innerText = `${edgeCount} active links`;
+
+      // Step Nav buttons
+      document.querySelectorAll(".step-nav").forEach(btn => {
+        const bRound = parseInt(btn.getAttribute("data-round"), 10);
+        if (bRound === currentRound) {
+          btn.className = "step-nav py-2 px-1 text-center rounded-lg border text-xs font-semibold transition-all border-indigo-500 bg-indigo-500/20 text-indigo-400 shadow-sm";
+        } else {
+          btn.className = "step-nav py-2 px-1 text-center rounded-lg border text-xs font-semibold transition-all border-[var(--border)] hover:border-indigo-400 text-[var(--muted-foreground)]";
+        }
+      });
+
+      // Metrics calculation for current round
+      let criticalTotal = 0;
+      let criticalOnTime = 0;
+      let totalCriticalitySum = 0;
+      let timelyCriticalitySum = 0;
+      let totalInformed = 0;
+      let newlyReached = 0;
+      let delays = [];
+
+      SIM_DATA.nodes.forEach(n => {
+        totalCriticalitySum += n.criticality;
+        if (n.criticality >= 4) criticalTotal++;
+
+        if (n.arrival_round !== null && n.arrival_round <= currentRound) {
+          totalInformed++;
+          delays.push(n.arrival_round - 1);
+          if (n.arrival_round === currentRound) newlyReached++;
+
+          if (n.arrival_round <= n.deadline) {
+            timelyCriticalitySum += n.criticality;
+            if (n.criticality >= 4) criticalOnTime++;
+          }
+        }
+      });
+
+      const critPct = criticalTotal > 0 ? ((criticalOnTime / criticalTotal) * 100).toFixed(1) : 0;
+      const weightPct = totalCriticalitySum > 0 ? ((timelyCriticalitySum / totalCriticalitySum) * 100).toFixed(1) : 0;
+      const avgDelay = delays.length > 0 ? (delays.reduce((a, b) => a + b, 0) / delays.length).toFixed(2) : "0.00";
+
+      document.getElementById("metricCritCov").innerText = `${critPct}% (${criticalOnTime}/${criticalTotal})`;
+      document.getElementById("barCritCov").style.width = `${critPct}%`;
+
+      document.getElementById("metricWeightedCov").innerText = `${weightPct}%`;
+      document.getElementById("barWeightedCov").style.width = `${weightPct}%`;
+
+      document.getElementById("statTotalInformed").innerText = `${totalInformed} / 75`;
+      document.getElementById("statNewlyReached").innerText = `${newlyReached}`;
+      document.getElementById("statAvgDelay").innerText = `${avgDelay} r`;
+      document.getElementById("statOverlap").innerText = currentRound >= 3 ? "0.27%" : "0.0%";
+
+      // Source Card
+      const cardTitle = document.getElementById("sourceCardTitle");
+      const cardDetails = document.getElementById("sourceCardDetails");
+      if (currentRound === 0) {
+        cardTitle.innerText = "No source active (Init)";
+        cardDetails.innerText = "Press Play or Step to ignite optimal emergency sources.";
+      } else {
+        const roundInfo = SIM_DATA.rounds[currentRound - 1];
+        if (roundInfo.source) {
+          cardTitle.innerText = `Ignited: Node #${roundInfo.source} • ${roundInfo.sourceRole}`;
+          cardDetails.innerText = roundInfo.desc;
+        } else {
+          cardTitle.innerText = `Round ${currentRound}: Natural Temporal Spread`;
+          cardDetails.innerText = roundInfo.desc;
+        }
+      }
+
+      // Event Log append
+      appendEventLog(currentRound);
+      draw();
+    }
+
+    function appendEventLog(r) {
+      const container = document.getElementById("eventLogContainer");
+      if (r === 0) {
+        container.innerHTML = `
+          <div class="p-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-gray-400">
+            [00:00] Simulation initialized with 75 participants across Lyon hospital ward.
+          </div>`;
+        return;
+      }
+      const roundInfo = SIM_DATA.rounds[r - 1];
+      const logItem = document.createElement("div");
+      logItem.className = "p-2 rounded-lg bg-[var(--background)] border border-[var(--border)] text-xs animate-fade-in";
+      const srcText = roundInfo.source ? `<b>Source #${roundInfo.source} (${roundInfo.sourceRole})</b> selected.` : "Propagation phase.";
+      logItem.innerHTML = `
+        <span class="text-indigo-400 font-bold">[Round ${r}]</span> ${srcText}
+        <div class="text-[var(--muted-foreground)] text-[11px] mt-0.5">${roundInfo.desc}</div>
+      `;
+      container.appendChild(logItem);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // Playback Handlers
+    function setRound(r) {
+      currentRound = Math.max(0, Math.min(6, r));
+      updateDashboard();
+      if (currentRound >= 6 && isPlaying) {
+        pause();
+      }
+    }
+
+    function nextRound() {
+      if (currentRound < 6) {
+        setRound(currentRound + 1);
+      } else {
+        pause();
+      }
+    }
+
+    function prevRound() {
+      if (currentRound > 0) {
+        setRound(currentRound - 1);
+      }
+    }
+
+    function play() {
+      if (currentRound >= 6) {
+        setRound(0);
+      }
+      isPlaying = true;
+      document.getElementById("playIcon").innerText = "⏸";
+      document.getElementById("playText").innerText = "Pause";
+      document.getElementById("btnPlayPause").classList.replace("bg-indigo-600", "bg-amber-600");
+      document.getElementById("btnPlayPause").classList.replace("hover:bg-indigo-700", "hover:bg-amber-700");
+
+      playTimer = setInterval(() => {
+        if (currentRound < 6) {
+          nextRound();
+        } else {
+          pause();
+        }
+      }, playSpeedMs);
+    }
+
+    function pause() {
+      isPlaying = false;
+      clearInterval(playTimer);
+      playTimer = null;
+      document.getElementById("playIcon").innerText = "▶";
+      document.getElementById("playText").innerText = "Play";
+      document.getElementById("btnPlayPause").classList.replace("bg-amber-600", "bg-indigo-600");
+      document.getElementById("btnPlayPause").classList.replace("hover:bg-amber-700", "hover:bg-indigo-700");
+    }
+
+    // Event Listeners
+    document.getElementById("btnPlayPause").addEventListener("click", () => {
+      isPlaying ? pause() : play();
+    });
+    document.getElementById("btnNext").addEventListener("click", () => {
+      pause();
+      nextRound();
+    });
+    document.getElementById("btnPrev").addEventListener("click", () => {
+      pause();
+      prevRound();
+    });
+    document.getElementById("btnReset").addEventListener("click", () => {
+      pause();
+      setRound(0);
+    });
+
+    document.querySelectorAll(".step-nav").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        pause();
+        setRound(parseInt(e.currentTarget.getAttribute("data-round"), 10));
+      });
+    });
+
+    document.querySelectorAll(".speed-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        document.querySelectorAll(".speed-btn").forEach(b => {
+          b.className = "speed-btn px-2 py-0.5 rounded text-xs border border-[var(--border)] hover:bg-[var(--card)]";
+        });
+        e.currentTarget.className = "speed-btn px-2 py-0.5 rounded text-xs bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/30";
+        playSpeedMs = parseInt(e.currentTarget.getAttribute("data-speed"), 10);
+        if (isPlaying) {
+          pause();
+          play();
+        }
+      });
+    });
+
+    // Tooltip Mouse Interaction
+    const tooltip = document.getElementById("nodeTooltip");
+    canvas.addEventListener("mousemove", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+
+      let found = null;
+      for (const node of SIM_DATA.nodes) {
+        const pt = toCanvasCoords(node.x, node.y);
+        const dist = Math.hypot(pt.x - mx, pt.y - my);
+        if (dist <= 12) {
+          found = node;
+          break;
+        }
+      }
+
+      hoveredNode = found;
+      if (found) {
+        const state = getNodeState(found, currentRound);
+        tooltip.style.left = `${mx + 15}px`;
+        tooltip.style.top = `${my - 10}px`;
+        tooltip.classList.remove("hidden");
+
+        const roleNames = { MED: "Medical Doctor", NUR: "Nurse", PAT: "Patient", ADM: "Admin Staff" };
+        document.getElementById("tipTitle").innerText = `Node #${found.id} (${roleNames[found.role] || found.role})`;
+        document.getElementById("tipRole").innerText = `Role: ${found.role} • Criticality: ${found.criticality}/5`;
+        document.getElementById("tipDeadline").innerText = `Required Deadline: Round ${found.deadline}`;
+
+        let statusText = "⚪ Status: Unreached";
+        let statusClass = "text-gray-400";
+        if (state.isCurrentSource) {
+          statusText = `🔥 Source Activated (Round ${currentRound})`;
+          statusClass = "text-red-400 font-bold";
+        } else if (state.isSource) {
+          statusText = `🔴 Source Ignited in Round ${found.source_round}`;
+          statusClass = "text-red-400";
+        } else if (state.isInformed) {
+          if (state.onTime) {
+            statusText = `🟢 Alert Received on Time (Round ${state.arr} ≤ Deadline ${found.deadline})`;
+            statusClass = "text-emerald-400 font-semibold";
+          } else {
+            statusText = `⚠️ Late Arrival (Round ${state.arr} > Deadline ${found.deadline})`;
+            statusClass = "text-amber-400 font-semibold";
+          }
+        }
+        const tipStatusEl = document.getElementById("tipStatus");
+        tipStatusEl.innerText = statusText;
+        tipStatusEl.className = `font-medium mt-1 ${statusClass}`;
+      } else {
+        tooltip.classList.add("hidden");
+      }
+      draw();
+    });
+
+    canvas.addEventListener("mouseleave", () => {
+      hoveredNode = null;
+      tooltip.classList.add("hidden");
+      draw();
+    });
+
+    // Start Simulation Display
+    setTimeout(() => {
+      resizeCanvas();
+      setRound(0);
+    }, 100);
+  </script>
+</body>
+</html>

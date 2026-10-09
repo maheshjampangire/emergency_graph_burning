@@ -1,0 +1,9 @@
+### Table 3: Ablation Study
+
+| Method variation | Timely Critical Coverage | Weighted Coverage | Overlap Ratio |
+| --- | --- | --- | --- |
+| Complete proposed method | 13.16 ± 0.00% | 11.65 ± 0.00% | 0.271 ± 0.000 |
+| Without criticality | 13.16 ± 0.00% | 11.65 ± 0.00% | 0.271 ± 0.000 |
+| Without deadlines | 10.53 ± 0.00% |  8.65 ± 0.00% | 0.000 ± 0.000 |
+| Without overlap penalty | 13.16 ± 0.00% | 11.65 ± 0.00% | 0.271 ± 0.000 |
+| Without temporal information | 36.84 ± 0.00% | 25.94 ± 0.00% | 0.000 ± 0.000 |
